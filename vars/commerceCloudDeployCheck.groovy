@@ -2,9 +2,7 @@ def call(deployCode) {
     script {
         while (true) {
           withCredentials([
-              string(credentialsId: 'commerceCloudSubscriptionCode', variable: 'subscriptionCode'),
-              string(credentialsId: 'commerceCloudClientId', variable: 'COMMERCE_CLOUD_CLIENT_ID'),
-              string(credentialsId: 'commerceCloudClientSecret', variable: 'COMMERCE_CLOUD_CLIENT_SECRET')
+              string(credentialsId: 'commerceCloudSubscriptionCode', variable: 'subscriptionCode')
           ]) {
               def token = getCommerceCloudToken()
               result = sh (script: "curl --location --request GET 'https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/deployments/$deployCode' --header 'x-approuter-authorization: Bearer ${token}'",returnStdout:true)

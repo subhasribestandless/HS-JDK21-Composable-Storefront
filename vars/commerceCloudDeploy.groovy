@@ -3,9 +3,7 @@ def call(buildName, dbUpdateMode, environmentId, strategy) {
     //deploy tag 
     script{
         withCredentials([
-            string(credentialsId: 'commerceCloudSubscriptionCode', variable: 'subscriptionCode'),
-            string(credentialsId: 'commerceCloudClientId', variable: 'COMMERCE_CLOUD_CLIENT_ID'),
-            string(credentialsId: 'commerceCloudClientSecret', variable: 'COMMERCE_CLOUD_CLIENT_SECRET')
+            string(credentialsId: 'commerceCloudSubscriptionCode', variable: 'subscriptionCode')
         ]) {
             def token = getCommerceCloudToken()
             deploy = sh (script: "curl --location --request POST 'https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/deployments' --header 'Content-Type: application/json' --header 'x-approuter-authorization: Bearer ${token}' --data-raw '{\"buildCode\": \"${buildName}\",\"databaseUpdateMode\": \"${dbUpdateMode}\",\"environmentCode\": \"${environmentId}\",\"strategy\": \"${strategy}\"}'",returnStdout:true)
