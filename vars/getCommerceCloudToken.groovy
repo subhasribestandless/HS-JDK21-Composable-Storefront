@@ -1,4 +1,5 @@
 def call() {
+    echo "entered getCommerceCloudToken method"
     def tokenEndpoint = "https://ycloud.accounts.ondemand.com/oauth2/token"
     def resource = "urn:sap:identity:application:provider:name:cp-dependency"
 
@@ -12,10 +13,11 @@ def call() {
             --data-urlencode 'resource=urn:sap:identity:application:provider:name:cp-dependency'""",
         returnStdout: true
     )
-
+    echo "$tokenResponse"
     def tokenJson = readJSON text: tokenResponse
     if (!tokenJson["access_token"]) {
         error("Failed to obtain access token from SAP Commerce Cloud OAuth2 endpoint")
     }
+
     return tokenJson["access_token"]
 }
