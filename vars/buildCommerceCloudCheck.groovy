@@ -1,27 +1,43 @@
 def call(codeNumber) {
     script {
+
         while (true) {
-          withCredentials([
-              string(credentialsId: 'commerceCloudSubscriptionCode', variable: 'subscriptionCode')
-          ]) {
-              def token = getCommerceCloudToken()
-              result = sh (script: "curl --location --request GET 'https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/builds/$codeNumber' --header 'x-approuter-authorization: Bearer ${token}'",returnStdout:true)
-          }
-          echo "$result"
-          statusResult = readJSON text: "$result"
 
-          if("SUCCESS".equals(statusResult["status"])) {
-            break;
-          }
+            withCredentials([
+                    string(credentialsId: 'commerceCloudSubscriptionCode', variable: 'subscriptionCode')
+            ]) {
 
-          if("FAIL".equals(statusResult["status"])) {
-            error("Build was not completed successfully on SAP Commerce Cloud")
-          }
+                def token = getCommerceCloudToken()
 
-          sh('sleep 120s')
+                result = sh(
+                        script: """
+                    curl -sS --location \
+                    'https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/builds/${codeNumber}' \
+                    --header 'x-approuter-authorization: Bearer ${token}'
+                    """,
+                        returnStdout: true
+                ).trim()
+            }
 
+            echo "Build status response: ${result}"
+
+            if (!result.startsWith("{")) {
+                error("Invalid response from build status API: ${result}")
+            }
+
+            def statusResult = readJSON text: result
+
+            if (statusResult.status == "SUCCESS") {
+                break
+            }
+
+            if (statusResult.status == "FAIL") {
+                error("Build failed in SAP Commerce Cloud")
+            }
+
+            sleep 120
         }
 
         echo "Commerce Cloud Build Complete"
     }
-}  
+}
