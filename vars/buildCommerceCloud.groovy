@@ -7,7 +7,7 @@ def call(branch, buildName) {
     echo "=============================="
 
     withCredentials([
-            string(credentialsId: '8b6f355ccc924f1990b5d798a5633478', variable: 'subscriptionCode')
+            string(credentialsId: 'b3f4ea79-ebc0-4a41-bf1c-93f7c588eafe', variable: 'subscriptionCode')
     ]) {
 
         def token = getCommerceCloudToken()
