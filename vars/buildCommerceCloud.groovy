@@ -7,39 +7,58 @@ def call(branch, buildName) {
     echo "=============================="
 
     withCredentials([
-            string(credentialsId: 'b3f4ea79-ebc0-4a41-bf1c-93f7c588eafe', variable: 'subscriptionCode')
+            usernamePassword(
+                    credentialsId: 'commerceCloudCredentials',
+                    usernameVariable: 'subscriptionCode',
+                    passwordVariable: 'unusedPassword'
+            )
     ]) {
 
         def token = getCommerceCloudToken()
 
         echo ">>> STEP 3: CALLING BUILD API"
-        echo ">>> subscriptionCode: ${subscriptionCode}"
-        echo ">>> token prefix: ${token.take(20)}..."
+        echo ">>> Token Generated Successfully"
 
-        def buildResponse = sh(
+        def response = sh(
                 script: """
-            curl -sS --location --request POST \
-            'https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/builds' \
-            --header 'Content-Type: application/json' \
-            --header 'x-approuter-authorization: Bearer ${token}' \
-            --data-raw '{"branch":"${branch}","name":"${buildName}"}'
+                curl --compressed -sS -i \\
+                --location --request POST \\
+                "https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/builds" \\
+                --header "Content-Type: application/json" \\
+                --header "Accept: application/json" \\
+                --header "x-approuter-authorization: Bearer ${token}" \\
+                --data-raw '{"branch":"${branch}","name":"${buildName}"}'
             """,
                 returnStdout: true
         ).trim()
 
         echo "=============================="
-        echo ">>> STEP 4: RAW BUILD RESPONSE"
-        echo buildResponse
+        echo ">>> BUILD API RESPONSE"
+        echo response
         echo "=============================="
 
-        if (!buildResponse || !buildResponse.startsWith("{")) {
-            error("BUILD API FAILED - NON JSON RESPONSE: ${buildResponse}")
+        def statusMatcher = response =~ /HTTP\\/.* (\\d{3})/
+        def status = statusMatcher ? statusMatcher[0][1] : "UNKNOWN"
+
+        echo "HTTP Status = ${status}"
+
+        def body = response.substring(response.lastIndexOf("\r\n\r\n") + 4).trim()
+
+        echo "Response Body:"
+        echo body
+
+        if (!(status in ["200", "201", "202"])) {
+            error("Build API failed with HTTP ${status}")
         }
 
-        def json = readJSON text: buildResponse
+        if (!body.startsWith("{")) {
+            error("Expected JSON but received:\n${body}")
+        }
 
-        echo ">>> STEP 5: PARSED RESPONSE"
-        echo "code = ${json.code}"
+        def json = readJSON text: body
+
+        echo "=============================="
+        echo "Build Code = ${json.code}"
         echo "=============================="
 
         return json.code
