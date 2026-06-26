@@ -18,20 +18,20 @@ def call() {
             returnStdout: true
     ).trim()
 
-    echo ">>> TOKEN RESPONSE"
+    echo "TOKEN RESPONSE:"
     echo tokenResponse
 
     if (!tokenResponse.startsWith("{")) {
-        error("Token API returned non-JSON response:\n${tokenResponse}")
+        error("TOKEN API FAILED:\n${tokenResponse}")
     }
 
     def json = readJSON text: tokenResponse
 
     if (!json.access_token) {
-        error("Access token not found.")
+        error("No access_token in response")
     }
 
-    echo ">>> TOKEN GENERATED"
+    echo ">>> TOKEN GENERATED SUCCESSFULLY"
 
     return json.access_token
 }

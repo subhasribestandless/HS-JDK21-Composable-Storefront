@@ -6,61 +6,58 @@ def call(branch, buildName) {
     echo ">>> buildName: ${buildName}"
     echo "=============================="
 
-    withCredentials([
-            usernamePassword(
-                    credentialsId: 'commerceCloudCredentials',
-                    usernameVariable: 'subscriptionCode',
-                    passwordVariable: 'unusedPassword'
-            )
-    ]) {
+    // 🔥 HARDCODED SUBSCRIPTION CODE (no Jenkins dependency)
+    def subscriptionCode = "5416ea93eb324720a548e0690064c59c"
 
-        def token = getCommerceCloudToken()
+    def token = getCommerceCloudToken()
 
-        echo ">>> STEP 3: CALLING BUILD API"
-        echo ">>> Token Generated Successfully"
+    echo ">>> STEP 3: CALLING BUILD API"
+    echo ">>> Using subscriptionCode: ${subscriptionCode}"
 
-        def response = sh(
-                script: """
-                curl --compressed -sS -i \\
-                --location --request POST \\
-                "https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/builds" \\
-                --header "Content-Type: application/json" \\
-                --header "Accept: application/json" \\
-                --header "x-approuter-authorization: Bearer ${token}" \\
-                --data-raw '{"branch":"${branch}","name":"${buildName}"}'
-            """,
-                returnStdout: true
-        ).trim()
+    def response = sh(
+            script: """
+            curl --compressed -sS -i \
+            --location --request POST \
+            "https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/builds" \
+            --header "Content-Type: application/json" \
+            --header "Accept: application/json" \
+            --header "x-approuter-authorization: Bearer ${token}" \
+            --data-raw '{"branch":"${branch}","name":"${buildName}"}'
+        """,
+            returnStdout: true
+    ).trim()
 
-        echo "=============================="
-        echo ">>> BUILD API RESPONSE"
-        echo response
-        echo "=============================="
+    echo "=============================="
+    echo ">>> RAW RESPONSE"
+    echo response
+    echo "=============================="
 
-        def statusMatcher = response =~ /HTTP\\/.* (\\d{3})/
-        def status = statusMatcher ? statusMatcher[0][1] : "UNKNOWN"
+    // Extract HTTP status
+    def matcher = response =~ /HTTP\\/.* (\\d{3})/
+    def status = matcher ? matcher[0][1] : "UNKNOWN"
 
-        echo "HTTP Status = ${status}"
+    echo "HTTP STATUS = ${status}"
 
-        def body = response.substring(response.lastIndexOf("\r\n\r\n") + 4).trim()
+    // Extract body
+    def body = response.substring(response.lastIndexOf("\r\n\r\n") + 4).trim()
 
-        echo "Response Body:"
-        echo body
+    echo "BODY:"
+    echo body
 
-        if (!(status in ["200", "201", "202"])) {
-            error("Build API failed with HTTP ${status}")
-        }
-
-        if (!body.startsWith("{")) {
-            error("Expected JSON but received:\n${body}")
-        }
-
-        def json = readJSON text: body
-
-        echo "=============================="
-        echo "Build Code = ${json.code}"
-        echo "=============================="
-
-        return json.code
+    if (!(status in ["200", "201", "202"])) {
+        error("Build API FAILED with HTTP ${status}")
     }
+
+    if (!body.startsWith("{")) {
+        error("Invalid JSON response:\n${body}")
+    }
+
+    def json = readJSON text: body
+
+    echo "=============================="
+    echo "BUILD SUCCESS"
+    echo "CODE = ${json.code}"
+    echo "=============================="
+
+    return json.code
 }
