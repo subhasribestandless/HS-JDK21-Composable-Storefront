@@ -1,5 +1,10 @@
 def call(branch, buildName) {
-    echo "##### Initiate Build to SAP Commerce Cloud Environment #####"
+
+    echo "=============================="
+    echo ">>> STEP 2: BUILD INITIATED"
+    echo ">>> branch: ${branch}"
+    echo ">>> buildName: ${buildName}"
+    echo "=============================="
 
     withCredentials([
             string(credentialsId: 'commerceCloudSubscriptionCode', variable: 'subscriptionCode')
@@ -7,24 +12,36 @@ def call(branch, buildName) {
 
         def token = getCommerceCloudToken()
 
-        def build = sh(
+        echo ">>> STEP 3: CALLING BUILD API"
+        echo ">>> subscriptionCode: ${subscriptionCode}"
+        echo ">>> token prefix: ${token.take(20)}..."
+
+        def buildResponse = sh(
                 script: """
             curl -sS --location --request POST \
             'https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/builds' \
             --header 'Content-Type: application/json' \
             --header 'x-approuter-authorization: Bearer ${token}' \
-            --data-raw '{\"branch\":\"${branch}\",\"name\":\"${buildName}\"}'
+            --data-raw '{"branch":"${branch}","name":"${buildName}"}'
             """,
                 returnStdout: true
         ).trim()
 
-        echo "Build response: ${build}"
+        echo "=============================="
+        echo ">>> STEP 4: RAW BUILD RESPONSE"
+        echo buildResponse
+        echo "=============================="
 
-        if (!build || !build.startsWith("{")) {
-            error("Build API did not return JSON. Response: ${build}")
+        if (!buildResponse || !buildResponse.startsWith("{")) {
+            error("BUILD API FAILED - NON JSON RESPONSE: ${buildResponse}")
         }
 
-        def build_result = readJSON text: build
-        return build_result.code
+        def json = readJSON text: buildResponse
+
+        echo ">>> STEP 5: PARSED RESPONSE"
+        echo "code = ${json.code}"
+        echo "=============================="
+
+        return json.code
     }
 }

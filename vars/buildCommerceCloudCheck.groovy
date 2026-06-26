@@ -1,43 +1,54 @@
 def call(codeNumber) {
-    script {
 
-        while (true) {
+    echo "=============================="
+    echo ">>> STEP 6: BUILD STATUS CHECK STARTED"
+    echo ">>> codeNumber: ${codeNumber}"
+    echo "=============================="
 
-            withCredentials([
-                    string(credentialsId: 'commerceCloudSubscriptionCode', variable: 'subscriptionCode')
-            ]) {
+    while (true) {
 
-                def token = getCommerceCloudToken()
+        withCredentials([
+                string(credentialsId: 'commerceCloudSubscriptionCode', variable: 'subscriptionCode')
+        ]) {
 
-                result = sh(
-                        script: """
-                    curl -sS --location \
-                    'https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/builds/${codeNumber}' \
-                    --header 'x-approuter-authorization: Bearer ${token}'
-                    """,
-                        returnStdout: true
-                ).trim()
-            }
+            def token = getCommerceCloudToken()
 
-            echo "Build status response: ${result}"
+            echo ">>> CALLING STATUS API FOR CODE: ${codeNumber}"
+
+            def result = sh(
+                    script: """
+                curl -sS --location \
+                'https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/builds/${codeNumber}' \
+                --header 'x-approuter-authorization: Bearer ${token}'
+                """,
+                    returnStdout: true
+            ).trim()
+
+            echo ">>> RAW STATUS RESPONSE:"
+            echo result
 
             if (!result.startsWith("{")) {
-                error("Invalid response from build status API: ${result}")
+                error("STATUS API FAILED - NOT JSON: ${result}")
             }
 
-            def statusResult = readJSON text: result
+            def json = readJSON text: result
 
-            if (statusResult.status == "SUCCESS") {
-                break
+            echo ">>> STATUS = ${json.status}"
+
+            if (json.status == "SUCCESS") {
+                echo ">>> BUILD SUCCESS"
             }
 
-            if (statusResult.status == "FAIL") {
-                error("Build failed in SAP Commerce Cloud")
+            if (json.status == "FAIL") {
+                error("BUILD FAILED IN SAP COMMERCE CLOUD")
             }
-
-            sleep 120
         }
 
-        echo "Commerce Cloud Build Complete"
+        echo ">>> WAITING 120 SECONDS BEFORE NEXT POLL"
+        sleep 120
     }
+
+    echo "=============================="
+    echo ">>> STEP 7: BUILD COMPLETED SUCCESSFULLY"
+    echo "=============================="
 }

@@ -1,6 +1,8 @@
 def call() {
 
-    echo "Getting SAP Commerce Cloud OAuth Token"
+    echo "=============================="
+    echo ">>> STEP 1: GETTING OAUTH TOKEN"
+    echo "=============================="
 
     def tokenResponse = sh(
             script: """
@@ -15,17 +17,19 @@ def call() {
             returnStdout: true
     ).trim()
 
-    echo "Token response: ${tokenResponse}"
+    echo ">>> TOKEN RAW RESPONSE:"
+    echo tokenResponse
 
     if (!tokenResponse.startsWith("{")) {
-        error("Token API did not return JSON: ${tokenResponse}")
+        error("TOKEN API FAILED - NOT JSON RESPONSE: ${tokenResponse}")
     }
 
     def json = readJSON text: tokenResponse
 
     if (!json.access_token) {
-        error("No access_token found in response")
+        error("TOKEN API FAILED - NO access_token FOUND")
     }
 
+    echo ">>> TOKEN GENERATED SUCCESSFULLY"
     return json.access_token
 }
