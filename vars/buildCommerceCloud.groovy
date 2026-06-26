@@ -7,7 +7,7 @@ def call(branch, buildName) {
     echo "=============================="
 
     // 🔥 HARDCODED SUBSCRIPTION CODE (no Jenkins dependency)
-    def subscriptionCode = "5416ea93eb324720a548e0690064c59c"
+    def subscriptionCode = "8b6f355ccc924f1990b5d798a5633478"
 
     def token = getCommerceCloudToken()
 
