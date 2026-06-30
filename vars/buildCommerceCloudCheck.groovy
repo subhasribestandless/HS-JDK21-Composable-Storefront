@@ -5,51 +5,44 @@ def call(codeNumber) {
     echo ">>> codeNumber: ${codeNumber}"
     echo "=============================="
 
+    def subscriptionCode = "8b6f355ccc924f1990b5d798a5633478"
+
     while (true) {
 
-        withCredentials([
-                string(credentialsId: 'commerceCloudSubscriptionCode', variable: 'subscriptionCode')
-        ]) {
+        def token = getCommerceCloudToken()
 
-            def token = getCommerceCloudToken()
+        echo ">>> CALLING STATUS API FOR CODE: ${codeNumber}"
 
-            echo ">>> CALLING STATUS API FOR CODE: ${codeNumber}"
+        def result = sh(
+                script: """
+            curl -sS --location \
+            'https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/builds/${codeNumber}' \
+            --header 'x-approuter-authorization: Bearer ${token}'
+            """,
+                returnStdout: true
+        ).trim()
 
-            def result = sh(
-                    script: """
-                curl -sS --location \
-                'https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/builds/${codeNumber}' \
-                --header 'x-approuter-authorization: Bearer ${token}'
-                """,
-                    returnStdout: true
-            ).trim()
+        echo ">>> RAW STATUS RESPONSE:"
+        echo result
 
-            echo ">>> RAW STATUS RESPONSE:"
-            echo result
+        if (!result.startsWith("{")) {
+            error("STATUS API FAILED - NOT JSON: ${result}")
+        }
 
-            if (!result.startsWith("{")) {
-                error("STATUS API FAILED - NOT JSON: ${result}")
-            }
+        def json = readJSON text: result
 
-            def json = readJSON text: result
+        echo ">>> STATUS = ${json.status}"
 
-            echo ">>> STATUS = ${json.status}"
+        if (json.status == "SUCCESS") {
+            echo ">>> BUILD SUCCESS ✅"
+            return
+        }
 
-            if (json.status == "SUCCESS") {
-                echo ">>> BUILD SUCCESS ✅"
-                return   // ✅ FIXED (exit loop)
-            }
-
-            if (json.status == "FAIL") {
-                error("BUILD FAILED IN SAP COMMERCE CLOUD")
-            }
+        if (json.status == "FAIL") {
+            error("BUILD FAILED IN SAP COMMERCE CLOUD")
         }
 
         echo ">>> WAITING 120 SECONDS BEFORE NEXT POLL"
         sleep 120
     }
-
-    echo "=============================="
-    echo ">>> STEP 7: BUILD COMPLETED SUCCESSFULLY"
-    echo "=============================="
 }
