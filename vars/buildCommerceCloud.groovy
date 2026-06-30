@@ -6,7 +6,6 @@ def call(branch, buildName) {
     echo ">>> buildName: ${buildName}"
     echo "=============================="
 
-    // 🔥 HARDCODED SUBSCRIPTION CODE (no Jenkins dependency)
     def subscriptionCode = "8b6f355ccc924f1990b5d798a5633478"
 
     def token = getCommerceCloudToken()
@@ -14,35 +13,30 @@ def call(branch, buildName) {
     echo ">>> STEP 3: CALLING BUILD API"
     echo ">>> Using subscriptionCode: ${subscriptionCode}"
 
-    def response = sh(
+    def responseFile = "build_response.json"
+
+    def status = sh(
             script: """
-            curl --compressed -sS -i \
-            --location --request POST \
-            "https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/builds" \
-            --header "Content-Type: application/json" \
-            --header "Accept: application/json" \
-            --header "x-approuter-authorization: Bearer ${token}" \
-            --data-raw '{"branch":"${branch}","name":"${buildName}"}'
+        curl --compressed -sS \
+        -o ${responseFile} \
+        -w "%{http_code}" \
+        --location --request POST \
+        "https://portalapi.commerce.ondemand.com/v2/subscriptions/${subscriptionCode}/builds" \
+        --header "Content-Type: application/json" \
+        --header "Accept: application/json" \
+        --header "x-approuter-authorization: Bearer ${token}" \
+        --data-raw '{"branch":"${branch}","name":"${buildName}"}'
         """,
             returnStdout: true
     ).trim()
 
-    echo "=============================="
-    echo ">>> RAW RESPONSE"
-    echo response
-    echo "=============================="
+    def body = readFile(responseFile).trim()
 
-    // Extract HTTP status
-    def matcher = response =~ /HTTP\\/.* (\\d{3})/
-    def status = matcher ? matcher[0][1] : "UNKNOWN"
-
+    echo "=============================="
     echo "HTTP STATUS = ${status}"
-
-    // Extract body
-    def body = response.substring(response.lastIndexOf("\r\n\r\n") + 4).trim()
-
     echo "BODY:"
     echo body
+    echo "=============================="
 
     if (!(status in ["200", "201", "202"])) {
         error("Build API FAILED with HTTP ${status}")
@@ -55,7 +49,7 @@ def call(branch, buildName) {
     def json = readJSON text: body
 
     echo "=============================="
-    echo "BUILD SUCCESS"
+    echo "BUILD TRIGGERED SUCCESSFULLY"
     echo "CODE = ${json.code}"
     echo "=============================="
 

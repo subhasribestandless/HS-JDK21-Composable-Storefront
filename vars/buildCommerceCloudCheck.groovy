@@ -36,7 +36,8 @@ def call(codeNumber) {
             echo ">>> STATUS = ${json.status}"
 
             if (json.status == "SUCCESS") {
-                echo ">>> BUILD SUCCESS"
+                echo ">>> BUILD SUCCESS ✅"
+                return   // ✅ FIXED (exit loop)
             }
 
             if (json.status == "FAIL") {
